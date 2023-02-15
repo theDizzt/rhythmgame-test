@@ -37,7 +37,7 @@ rate = "PERFECT"
 Cpath = os.path.dirname(__file__)
 Fpath = os.path.join("font")
 
-ingame_font_rate = pygame.font.Font(os.path.join(Fpath, "Murmur-Regular.otf"), int(w/23))
+ingame_font_rate = pygame.font.Font(os.path.join(Fpath, "score.ttf"), int(w/23))
 rate_text = ingame_font_rate.render(str(rate), False, (255, 255, 255))
 
 #Note
@@ -73,7 +73,7 @@ def sum_note(n):
         tst = Time + 2
         t4.append([ty, tst])
 
-speed = 2
+speed = 1
 notesumt = 0
 
 #temp
@@ -92,52 +92,92 @@ combo_time = Time + 1
 last_combo = 0
 miss_anim = 0
 
+#Score
+total_notes = 339
+rate_ratio = 0
+max_combo = 0
+extra_score = 0
+pres_notes = 0
+
+score = 0
+accuracy = 0
+
 #Rating
 rate_data = [0, 0, 0, 0]
+rate_stack = [0, 0, 0, 0]
 
-def rating():
-    global combo, miss_anim, last_combo, combo_effect, combo_effect2, combo_time, rate
+def rating(n):
+    global combo, miss_anim, last_combo, combo_effect, combo_effect2, combo_time, rate, rate_ratio, max_combo, extra_score, score, pres_notes, accuracy
 
-    if abs((h/12)*9 - rate_data[n - 1] < 950 * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] >= 200*speed*(h/900))):
+    judge_ms = [16/2, 39/2, 69/2, 96/2, 127/2, 164/2]
+
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[5] * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] > judge_ms[4] * speed * (h/900))):
         last_combo = combo
         miss_anim = 1
         combo = 0
         combo_effect = 0.2
         combo_time = Time + 1
         combo_effect2 = 1.3
-        rate = "WORST"
+        rate = "FRAGILE"
     
-    if abs((h/12)*9 - rate_data[n - 1] < 200 * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] >= 100*speed*(h/900))):
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[4] * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] > judge_ms[3] * speed * (h/900))):
         last_combo = combo
         miss_anim = 1
         combo = 0
         combo_effect = 0.2
         combo_time = Time + 1
         combo_effect2 = 1.3
-        rate = "BAD"
+        rate_ratio += 0.01
+        rate = "SCARCITY"
 
-    if abs((h/12)*9 - rate_data[n - 1] < 100 * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] >= 50*speed*(h/900))):
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[3] * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] > judge_ms[2] * speed * (h/900))):
         combo += 1
         combo_effect = 0.2
         combo_time = Time + 1
         combo_effect2 = 1.3
-        rate = "GOOD"
+        rate_ratio += 0.3
+        rate_stack[3] += 1
+        rate = "COMMON"
+        if max_combo < combo:
+            max_combo += 1
     
-    if abs((h/12)*9 - rate_data[n - 1] < 50 * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] >= 15*speed*(h/900))):
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[2] * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] > judge_ms[1] * speed * (h/900))):
         combo += 1
         combo_effect = 0.2
         combo_time = Time + 1
         combo_effect2 = 1.3
-        rate = "GREAT"
+        rate_ratio += 0.7
+        rate_stack[2] += 1
+        rate = "PRESERVED"
+        if max_combo < combo:
+            max_combo += 1
 
-    if abs((h/12)*9 - rate_data[n - 1] < 15 * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] >= 0*speed*(h/900))):
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[1] * speed * (h/900) and abs((h/12) * 9 - rate_data[n - 1] > judge_ms[0] * speed * (h/900))):
         combo += 1
         combo_effect = 0.2
         combo_time = Time + 1
         combo_effect2 = 1.3
-        rate = "PERFECT"
+        rate_ratio += 1
+        rate_stack[1] += 1
+        rate = "INTEGRITY"
+        if max_combo < combo:
+            max_combo += 1
+    
+    if abs((h/12)*9 - rate_data[n - 1] <= judge_ms[0] * speed * (h/900)):
+        combo += 1
+        combo_effect = 0.2
+        combo_time = Time + 1
+        combo_effect2 = 1.3
+        rate_ratio += 1
+        extra_score += 1
+        rate_stack[0] += 1
+        rate = "INTEGRITY+"
+        if max_combo < combo:
+            max_combo += 1
 
-
+    pres_notes += 1
+    score = int(900000 * (rate_ratio/total_notes) + 100000 * (max_combo/total_notes)) + extra_score
+    accuracy = rate_ratio/pres_notes*100
 
 #Run
 while main:
@@ -159,63 +199,81 @@ while main:
             notesumt += 1
 
             #temp
-            while a == aa:
+            if not(aa >= total_notes):
                 a = random.randint(1, 4)
-            sum_note(a)
-            aa = a
+                sum_note(a)
+                aa += 1
 
         Time = time.time() - gst
 
         fps = clock.get_fps()
 
         #Ingame Text
-        ingame_font_combo = pygame.font.Font(os.path.join(Fpath, "Murmur-Regular.otf"), int((w/38)*combo_effect2))
+        ingame_font_combo = pygame.font.Font(os.path.join(Fpath, "combo.otf"), int((w/24)*combo_effect2))
         combo_text = ingame_font_combo.render(str(combo), False, (255, 255, 255))
 
         rate_text = ingame_font_rate.render(str(rate), False, (255, 255, 255))
-        rate_text = pygame.transform.scale(rate_text, (int(w/110*len(rate)*combo_effect2), int((w/58*combo_effect*combo_effect2))))
+        rate_text = pygame.transform.scale(rate_text, (int(w/110*len(rate)*combo_effect2), int((w/42*combo_effect*combo_effect2))))
 
-        ingame_font_miss = pygame.font.Font(os.path.join(Fpath, "Murmur-Regular.otf"), int((w/38)*miss_anim))
+        ingame_font_miss = pygame.font.Font(os.path.join(Fpath, "combo.otf"), int((w/24)*miss_anim))
         miss_text = ingame_font_miss.render(str(last_combo), False, (255, 0, 0))
+
+        ingame_font_combo_title = pygame.font.Font(os.path.join(Fpath, "judge.ttf"), int((w/96)*combo_effect2))
+        combo_title = ingame_font_combo_title.render("COMBO", False, (255, 255, 255))
+
+        ingame_font_score = pygame.font.Font(os.path.join(Fpath, "score.ttf"), int((w/48)*combo_effect2))
+        score_text = ingame_font_score.render(str(score).zfill(7), False, (255, 255, 255))
+
+        ingame_font_acc = pygame.font.Font(os.path.join(Fpath, "score.ttf"), int((w/48)))
+        acc_text = ingame_font_acc.render("{:.2f}%".format(accuracy), False, (255, 255, 255))
+
+        #ingame_font_counter = pygame.font.Font(os.path.join(Fpath, "test.otf"), int(w/96))
+        #counter_text = ingame_font_counter.render("MAX COMBO: {}, Perfect+: {}, Perfect: {}, Great: {}, Good: {}".format(max_combo, rate_stack[0], rate_stack[1], rate_stack[2], rate_stack[3]), False, (255, 255, 255))
 
         if fps == 0:
             fps = maxframe
 
         for event in pygame.event.get():
-            
+
             if event.type == pygame.QUIT:
                 pygame.quit()
-                break
+                sys.exit()
+            
+            pygame.display.update()
             
             #Keyboard Input
             if event.type == pygame.KEYDOWN:
                 #Line 1
                 if event.key == pygame.K_d:
                     keyset[0] = 1
-                    if len(t1 > 0):
+                    if len(t1) > 0:
                         if t1[0][0] > h/3:
                             del t1[0]
+                    rating(1)
                 
                 #Line 2
                 if event.key == pygame.K_f:
                     keyset[1] = 1
-                    if len(t2 > 0):
+                    if len(t2) > 0:
                         if t2[0][0] > h/3:
                             del t2[0]
+                    rating(2)
                 
                 #Line 3
                 if event.key == pygame.K_j:
                     keyset[2] = 1
-                    if len(t3 > 0):
+                    if len(t3) > 0:
                         if t3[0][0] > h/3:
                             del t3[0]
+                    rating(3)
                 
                 #Line 4
                 if event.key == pygame.K_k:
                     keyset[3] = 1
-                    if len(t4 > 0):
+                    if len(t4) > 0:
                         if t4[0][0] > h/3:
                             del t4[0]
+                    rating(4)
             
             if event.type == pygame.KEYUP:
                 #Line 1
@@ -254,7 +312,7 @@ while main:
         miss_anim += (4 - miss_anim)/(14*(maxframe/fps))
 
         #Gear BG
-        pygame.draw.rect(screen, (0, 0, 0), (w/2 - w/8, -int(w/100), w/4, h + int(w/50)))
+        #pygame.draw.rect(screen, (0, 0, 0), (w/2 - w/8, -int(w/100), w/4, h + int(w/50)))
 
         #Gear Decoration
         for i in range(7):
@@ -274,12 +332,12 @@ while main:
             pygame.draw.rect(screen, (200 - ((200/7)*i), 200 - ((200/7)*i), 200 - ((200/7)*i)), (w/2 + w/16 + w/32 - (w/32)*keys[3], (h/12)*9 - (h/30)*keys[3]*i, w/16*keys[3], (h/35)/i))
 
         #Gear Line
-        pygame.draw.rect(screen, (255, 255, 255), (w/2 - w/8, -int(w/100), w/4, h + int(w / 100)))
+        #pygame.draw.rect(screen, (255, 255, 255), (w/2 - w/8, -int(w/100), w/4, h + int(w / 100)))
 
         #Generate Note
         for tile_data in t1:
             #판정선 기준 "(현재 시간 - 노트 소환시간) * 350" 의 위치로 이동. 노트 생성 후 음에 맞게 떨어지는데 2초 만큼의 시간이 소요.
-            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*350*speed*(h/900)
+            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*1000*speed*(h/900)
             pygame.draw.rect(screen, (255, 255, 255), (w/2 - w/8, tile_data[0] - h/100, w/16, h/50))
             #놓친 노트 삭제
             if tile_data[0] > h - (h/9):
@@ -289,11 +347,13 @@ while main:
                 combo_effect = 0.2
                 combo_time = Time + 1
                 combo_effect2 = 1.3
+                pres_notes += 1
+                accuracy = rate_ratio/pres_notes*100
                 rate = "MISS"
                 t1.remove(tile_data)
         
         for tile_data in t2:
-            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*350*speed*(h/900)
+            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*1000*speed*(h/900)
             pygame.draw.rect(screen, (255, 255, 255), (w/2 - w/16, tile_data[0] - h/100, w/16, h/50))
             if tile_data[0] > h - (h/9):
                 last_combo = combo
@@ -302,11 +362,13 @@ while main:
                 combo_effect = 0.2
                 combo_time = Time + 1
                 combo_effect2 = 1.3
+                pres_notes += 1
+                accuracy = rate_ratio/pres_notes*100
                 rate = "MISS"
                 t2.remove(tile_data)
 
         for tile_data in t3:
-            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*350*speed*(h/900)
+            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*1000*speed*(h/900)
             pygame.draw.rect(screen, (255, 255, 255), (w/2, tile_data[0] - h/100, w/16, h/50))
             if tile_data[0] > h - (h/9):
                 last_combo = combo
@@ -315,11 +377,13 @@ while main:
                 combo_effect = 0.2
                 combo_time = Time + 1
                 combo_effect2 = 1.3
+                pres_notes += 1
+                accuracy = rate_ratio/pres_notes*100
                 rate = "MISS"
                 t3.remove(tile_data)
 
         for tile_data in t4:
-            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*350*speed*(h/900)
+            tile_data[0] = (h/12)*9 + (Time - tile_data[1])*1000*speed*(h/900)
             pygame.draw.rect(screen, (255, 255, 255), (w/2 + w/16, tile_data[0] - h/100, w/16, h/50))
             if tile_data[0] > h - (h/9):
                 last_combo = combo
@@ -328,6 +392,8 @@ while main:
                 combo_effect = 0.2
                 combo_time = Time + 1
                 combo_effect2 = 1.3
+                pres_notes += 1
+                accuracy = rate_ratio/pres_notes*100
                 rate = "MISS"
                 t4.remove(tile_data)
 
@@ -356,11 +422,16 @@ while main:
 
         #Judgement Text Render
         miss_text.set_alpha(255 - (255/4)*miss_anim)
-
-        screen.blit(combo_text, (w/2 - combo_text.get_width()/2, (h/12)*4 - combo_text.get_height()/2))
+        
+        screen.blit(combo_title, (w/2 - combo_title.get_width()/2, (h/30)*4 - combo_title.get_height()/2))
+        screen.blit(combo_text, (w/2 - combo_text.get_width()/2, (h/18)*4 - combo_text.get_height()/2))
         screen.blit(rate_text, (w/2 - rate_text.get_width()/2, (h/12)*8 - rate_text.get_height()/2))
-        screen.blit(miss_text, (w/2 - miss_text.get_width()/2, (h/12)*4 - miss_text.get_height()/2))
+        screen.blit(miss_text, (w/2 - miss_text.get_width()/2, (h/18)*4 - miss_text.get_height()/2))
+        screen.blit(score_text, (4*w/5 - score_text.get_width()/2, (h/25)*4 - score_text.get_height()/2))
+        screen.blit(acc_text, (w/2 - acc_text.get_width()/2, (h/8)*4 - acc_text.get_height()/2))
+        #screen.blit(counter_text, (w/5 - counter_text.get_width()/2, (h/30)*4 - counter_text.get_height()/2))
 
+        #Update Display
         pygame.display.flip()
 
         #Limitate Frames
